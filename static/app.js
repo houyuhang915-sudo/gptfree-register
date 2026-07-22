@@ -140,13 +140,13 @@ function renderHealth() {
   const score = values.length ? Math.round(values.filter(Boolean).length * 100 / values.length) : 0;
   $("#sideHealthDot").className = health.ok ? "ok" : "warn";
   $("#sideHealthText").textContent = health.ok ? "服务就绪" : "运行时需检查";
-  $("#sideHealthSub").textContent = health.dry_run ? "DRY RUN MODE" : "CORE / API";
+  $("#sideHealthSub").textContent = "CORE / API";
   $("#healthPill").className = `status-pill ${health.ok ? "" : "failed"}`;
   $("#healthPill").textContent = health.ok ? "READY" : "ATTENTION";
   $("#healthScore").textContent = score;
   $("#scoreRing").style.setProperty("--score", `${score * 3.6}deg`);
   $("#healthTitle").textContent = health.ok ? "独立运行时已就绪" : "有检查项未通过";
-  $("#healthMessage").textContent = health.dry_run ? "当前使用演示运行器，用于界面和本地流程验收。" : "注册核心、依赖和输出目录均由本地应用管理。";
+  $("#healthMessage").textContent = "注册核心、依赖和输出目录均由本地应用管理。";
   const labels = {runner: "Free runner", runtime: "Protocol core", writable: "Output writable", curl_cffi: "curl_cffi", httpx: "httpx", cryptography: "cryptography", api: "Console API"};
   $("#healthChecks").innerHTML = Object.entries(checks).map(([key, ok]) => `<div class="check-row"><span>${escapeHtml(labels[key] || key)}</span><b class="${ok ? "ok" : "fail"}">${ok ? "PASS" : "MISSING"}</b></div>`).join("");
   renderRuntime();
@@ -385,9 +385,8 @@ async function loadJobs() {
 function renderOverview() {
   const jobs = state.jobs;
   const running = jobs.filter(job => job.state === "running");
-  const realJobs = jobs.filter(job => !job.dry_run);
-  const success = realJobs.reduce((sum, job) => sum + Number(job.success_count || 0), 0);
-  const failed = realJobs.reduce((sum, job) => sum + Number(job.failed_count || 0), 0);
+  const success = jobs.reduce((sum, job) => sum + Number(job.success_count || 0), 0);
+  const failed = jobs.reduce((sum, job) => sum + Number(job.failed_count || 0), 0);
   $("#metricRunning").textContent = running.length;
   $("#metricRunningSub").textContent = running.length ? `${running.reduce((sum, job) => sum + Number(job.workers || 0), 0)} 个并发执行槽正在工作` : "当前没有任务占用执行槽";
   $("#metricSuccess").textContent = success;
@@ -404,7 +403,7 @@ function renderOverview() {
   host.innerHTML = rows.map(job => `
     <div class="activity-row" data-job-id="${escapeHtml(job.id)}">
       <i class="${statusClass(job.state)}"></i>
-      <div class="activity-name"><b>${escapeHtml(job.label)}</b><small>${escapeHtml(job.method)} · ${escapeHtml(job.proxy_label)} · ${job.account_count} accounts${job.dry_run ? " · 演示任务" : ""}</small></div>
+      <div class="activity-name"><b>${escapeHtml(job.label)}</b><small>${escapeHtml(job.method)} · ${escapeHtml(job.proxy_label)} · ${job.account_count} accounts</small></div>
       <div class="mini-progress"><div><i style="width:${job.progress}%"></i></div><span>${job.progress}%</span></div>
       <time>${timeAgo(job.created_at)}</time>
     </div>`).join("");
@@ -420,7 +419,7 @@ function renderJobs() {
   body.innerHTML = rows.map(job => `
     <tr data-job-id="${escapeHtml(job.id)}">
       <td><div class="task-cell"><b>${escapeHtml(job.label)}</b><code>${escapeHtml(job.id)}</code></div></td>
-      <td><span class="status-pill neutral">${escapeHtml(job.method)}${job.protocol_engine ? ` / ${escapeHtml(job.protocol_engine)}` : ""}${job.dry_run ? " · 演示" : ""}</span></td>
+      <td><span class="status-pill neutral">${escapeHtml(job.method)}${job.protocol_engine ? ` / ${escapeHtml(job.protocol_engine)}` : ""}</span></td>
       <td><div class="table-progress"><div><i style="width:${job.progress}%"></i></div><span>${job.completed_count}/${job.account_count} · ${job.progress}%</span></div></td>
       <td><div class="result-counts"><b>✓ ${job.success_count}</b><em>× ${job.failed_count}</em></div></td>
       <td><code>${duration(job.duration_seconds)}</code></td>
@@ -441,11 +440,10 @@ async function loadResults() {
 
 function renderResults() {
   const all = state.results;
-  const realResults = all.filter(row => !row.dry_run);
-  $("#resultTotal").textContent = realResults.length;
-  $("#resultAgent").textContent = realResults.filter(row => row.status === "agent_ready").length;
-  $("#resultPhone").textContent = realResults.filter(row => row.status === "phone_bound").length;
-  $("#resultErrors").textContent = realResults.filter(row => !row.ok).length;
+  $("#resultTotal").textContent = all.length;
+  $("#resultAgent").textContent = all.filter(row => row.status === "agent_ready").length;
+  $("#resultPhone").textContent = all.filter(row => row.status === "phone_bound").length;
+  $("#resultErrors").textContent = all.filter(row => !row.ok).length;
   const search = ($("#resultSearch")?.value || "").toLowerCase();
   const rows = all.filter(row => {
     const filterOk = state.resultFilter === "all" || (state.resultFilter === "failed" ? !row.ok : row.status === state.resultFilter);
@@ -458,7 +456,7 @@ function renderResults() {
     const probeNote = healthProbeNote(row);
     return `<tr>
       <td><div class="account-cell"><b>${escapeHtml(row.email)}</b><small>${formatDateTime(row.registered_at)}</small></div></td>
-      <td><span class="status-pill ${statusClass(row.status)}">${escapeHtml(resultStatusLabel(row.status))}</span>${row.dry_run ? " <span class=\"status-pill neutral\">演示</span>" : ""}</td>
+      <td><span class="status-pill ${statusClass(row.status)}">${escapeHtml(resultStatusLabel(row.status))}</span></td>
       <td>${escapeHtml(row.method)}${row.protocol_engine ? ` / ${escapeHtml(row.protocol_engine)}` : ""}</td>
       <td>${trial}</td>
       <td><div class="health-cell"><span class="status-pill ${healthClass}">${escapeHtml(health)}</span>${probeNote}</div></td>
@@ -652,7 +650,7 @@ async function refreshDrawer() {
     $("#drawerTitle").textContent = job.label;
     $("#drawerId").textContent = job.id;
     $("#drawerState").className = `status-pill ${statusClass(job.state)}`;
-    $("#drawerState").textContent = job.dry_run ? "演示结果" : statusLabel(job.state);
+    $("#drawerState").textContent = statusLabel(job.state);
     $("#drawerProgressText").textContent = `${job.progress}%`;
     $("#drawerProgressBar").style.width = `${job.progress}%`;
     $("#drawerSuccess").textContent = job.success_count;

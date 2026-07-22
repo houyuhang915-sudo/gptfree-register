@@ -58,14 +58,6 @@ chmod +x start.sh
 
 打开 <http://127.0.0.1:8866>。设置 `FREE_CONSOLE_PASSWORD` 后，控制台启用 HTTP Basic Authentication，用户名可任意填写。
 
-本地仅检查 UI 和任务流程时，使用 Dry Run：
-
-```bash
-FREE_CONSOLE_DRY_RUN=1 python3 app.py
-```
-
-Dry Run 使用本地模拟执行器，不会发起外部注册请求，也不会生成真实凭据、写入账号池或参与健康状态轮询；页面会将这类任务标记为“演示”。
-
 ### 控制台使用
 
 #### 1. 配置运行环境

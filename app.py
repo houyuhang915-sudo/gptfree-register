@@ -171,10 +171,6 @@ def apply_process_timezone(settings: dict[str, Any] | None = None) -> str:
     return name
 
 
-def is_dry_run() -> bool:
-    return os.environ.get("FREE_CONSOLE_DRY_RUN", "0") == "1"
-
-
 def local_now(settings: dict[str, Any] | None = None) -> str:
     zone = ZoneInfo(display_timezone_name(settings))
     return datetime.now(zone).isoformat(timespec="seconds")
@@ -447,11 +443,8 @@ class Job:
 
     def start(self, command: list[str], env: dict[str, str]) -> None:
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
-        preamble = f"=== Free Console task {self.id} · {self.meta['created_at']} ===\n"
-        if self.meta.get("dry_run"):
-            preamble += "=== DRY RUN · no external registration or credentials are created ===\n"
         self.log_path.write_text(
-            preamble,
+            f"=== Free Console task {self.id} · {self.meta['created_at']} ===\n",
             encoding="utf-8",
         )
         log_handle = self.log_path.open("a", encoding="utf-8", buffering=1)
@@ -488,13 +481,9 @@ class Job:
         try:
             registry = pool_registry()
             task_results = read_results(self.result_path)
-            if self.meta.get("dry_run"):
-                if self.meta.get("pool_batch"):
-                    registry.release(self.id)
-            else:
-                registry.record_registered_results(self.id, task_results)
-                if self.meta.get("pool_batch"):
-                    registry.record_job_results(self.id, task_results, final_state=final_state)
+            registry.record_registered_results(self.id, task_results)
+            if self.meta.get("pool_batch"):
+                registry.record_job_results(self.id, task_results, final_state=final_state)
         except Exception as exc:
             with self.lock:
                 self.meta["pool_sync_error"] = f"{type(exc).__name__}: {exc}"
@@ -760,12 +749,8 @@ def load_jobs() -> None:
                 result_value = str(meta.get("result_path") or "")
                 task_results = read_results(Path(result_value)) if result_value else []
                 registry = pool_registry()
-                if meta.get("dry_run"):
-                    if meta.get("pool_batch"):
-                        registry.release(str(meta.get("id") or ""))
-                else:
-                    registry.record_registered_results(str(meta.get("id") or ""), task_results)
-                if meta.get("pool_batch") and not meta.get("dry_run"):
+                registry.record_registered_results(str(meta.get("id") or ""), task_results)
+                if meta.get("pool_batch"):
                     # Reconcile completed rows before releasing only the rows
                     # that never produced a result during the interrupted run.
                     registry.record_job_results(
@@ -834,7 +819,6 @@ def api_health():
         "local_time": local_now(),
         "timezone": display_timezone_name(),
         "checks": checks,
-        "dry_run": is_dry_run(),
     })
 
 
@@ -1157,14 +1141,6 @@ def api_create_run():
         if sms_source == "platform" or not body.get("bind_use_bitbrowser"):
             command.append("--bind-no-bitbrowser")
 
-    dry_run = is_dry_run()
-    if dry_run:
-        command = [
-            PYTHON, str(ROOT / "scripts" / "fake_runner.py"),
-            "--accounts-file", str(account_file), "--out", str(result_path),
-            "--method", method, "--workers", str(workers),
-        ]
-
     meta = {
         "id": job_id,
         "label": str(body.get("name") or f"Free · {method} · {len(rows)} accounts")[:80],
@@ -1188,7 +1164,6 @@ def api_create_run():
         "cleanup_paths": cleanup,
         "pool_batch": pool_batch,
         "pool_selected": pool_selected if pool_batch else [],
-        "dry_run": dry_run,
     }
     if pool_batch:
         reserved = pool_registry().reserve(
@@ -1252,15 +1227,13 @@ def api_results():
     registry = sync_pool_registry()
     for job in jobs:
         job_rows = read_results(job.result_path)
-        if not job.meta.get("dry_run"):
-            registry.record_registered_results(job.id, job_rows)
-            if job.meta.get("pool_batch") and job.meta.get("state") in {"completed", "failed", "stopped", "interrupted"}:
-                registry.record_job_results(job.id, job_rows, final_state=str(job.meta.get("state")))
+        registry.record_registered_results(job.id, job_rows)
+        if job.meta.get("pool_batch") and job.meta.get("state") in {"completed", "failed", "stopped", "interrupted"}:
+            registry.record_job_results(job.id, job_rows, final_state=str(job.meta.get("state")))
         states = registry.lookup(item.get("email", "") for item in job_rows)
         for item in job_rows:
             public = public_result(item)
             public["job_id"] = job.id
-            public["dry_run"] = bool(job.meta.get("dry_run"))
             state = states.get(str(public.get("email") or "").casefold(), {})
             public.update({
                 "pool_state": state.get("state", ""),

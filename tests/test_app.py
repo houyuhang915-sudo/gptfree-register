@@ -5,11 +5,57 @@ import sqlite3
 import sys
 import time
 import types
+from pathlib import Path
 
 import pytest
 
 import app as console
 from account_registry import AccountRegistry
+
+
+class FakeRunnerProcess:
+    """Test-only stand-in for the external registration runner."""
+
+    _next_pid = 10_000
+
+    def __init__(self, command, **kwargs):
+        self.pid = FakeRunnerProcess._next_pid
+        FakeRunnerProcess._next_pid += 1
+        self._returncode = None
+
+        accounts_path = Path(command[command.index("--emails-file") + 1])
+        result_path = Path(command[command.index("--out") + 1])
+        method = command[command.index("--method") + 1]
+        has_agent_identity = "--agent-identity" in command
+        rows = []
+        for raw in accounts_path.read_text(encoding="utf-8").splitlines():
+            email = raw.split("----", 1)[0].strip()
+            if not email:
+                continue
+            rows.append({
+                "email": email,
+                "ok": True,
+                "status": "agent_ready" if has_agent_identity else "registered",
+                "method": method,
+                "protocol_engine": "mail_auth" if method == "protocol" else "",
+                "registered_at": "2026-07-22T00:00:00Z",
+                "agent_identity_ok": has_agent_identity,
+            })
+        result_path.write_text(
+            "\n".join(json.dumps(row) for row in rows) + ("\n" if rows else ""),
+            encoding="utf-8",
+        )
+        stream = kwargs.get("stdout")
+        if stream is not None:
+            stream.write("[test runner] Agent Identity ready\n" if has_agent_identity else "[test runner] registered\n")
+            stream.flush()
+
+    def poll(self):
+        return self._returncode
+
+    def wait(self):
+        self._returncode = 0
+        return self._returncode
 
 
 @pytest.fixture()
@@ -25,9 +71,9 @@ def client(tmp_path, monkeypatch):
     for directory in (console.JOB_DIR, console.INPUT_DIR, console.OUTPUT, console.RESULT_DIR):
         directory.mkdir(parents=True, exist_ok=True)
     console.JOBS.clear()
-    monkeypatch.setenv("FREE_CONSOLE_DRY_RUN", "1")
     monkeypatch.setenv("FREE_CONSOLE_DISABLE_STATUS_POLLER", "1")
     monkeypatch.delenv("FREE_CONSOLE_PASSWORD", raising=False)
+    monkeypatch.setattr(console.subprocess, "Popen", FakeRunnerProcess)
     with console.app.test_client() as test_client:
         yield test_client
     console.JOBS.clear()
@@ -54,7 +100,6 @@ def test_health_reports_standalone_runtime(client):
     assert response.status_code == 200
     assert payload["ok"] is True
     assert payload["checks"]["runner"] is True
-    assert payload["dry_run"] is True
 
 
 def test_password_protects_console_but_not_healthcheck(client, monkeypatch):
@@ -110,7 +155,7 @@ def test_health_proxy_is_derived_from_the_saved_proxy_settings() -> None:
     assert env["FREE_CONSOLE_HEALTH_PROXY"] == proxy
 
 
-def test_dry_run_job_lifecycle(client):
+def test_job_lifecycle(client):
     response = client.post("/api/runs", json={
         "name": "pytest smoke",
         "accounts": (
@@ -138,7 +183,6 @@ def test_dry_run_job_lifecycle(client):
 
     assert job is not None
     assert job["state"] == "completed"
-    assert job["dry_run"] is True
     assert job["progress"] == 100
     assert job["success_count"] == 2
     assert job["failed_count"] == 0
@@ -147,8 +191,7 @@ def test_dry_run_job_lifecycle(client):
     results = client.get("/api/results").get_json()["results"]
     assert {row["email"] for row in results} == {"one@example.com", "two@example.com"}
     assert all("access_token" not in row for row in results)
-    assert all(row["dry_run"] is True for row in results)
-    assert client.get("/api/accounts").get_json()["summary"]["registered"] == 0
+    assert client.get("/api/accounts").get_json()["summary"]["registered"] == 2
 
 
 def test_pool_import_batch_reservation_and_result_lifecycle(client):
@@ -189,8 +232,11 @@ def test_pool_import_batch_reservation_and_result_lifecycle(client):
     assert job["state"] == "completed"
 
     accounts = client.get("/api/accounts").get_json()
-    assert accounts["summary"]["spare"] == 2
-    assert accounts["summary"]["registered"] == 0
+    assert accounts["summary"]["spare"] == 1
+    assert accounts["summary"]["registered"] == 1
+    registered = [row for row in accounts["accounts"] if row["state"] == "registered"]
+    assert len(registered) == 1
+    assert registered[0]["registered_at"].endswith("Z")
 
 
 def test_status_poll_configuration_and_empty_immediate_run(client):
