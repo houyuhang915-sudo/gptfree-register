@@ -138,6 +138,7 @@ def test_dry_run_job_lifecycle(client):
 
     assert job is not None
     assert job["state"] == "completed"
+    assert job["dry_run"] is True
     assert job["progress"] == 100
     assert job["success_count"] == 2
     assert job["failed_count"] == 0
@@ -146,6 +147,8 @@ def test_dry_run_job_lifecycle(client):
     results = client.get("/api/results").get_json()["results"]
     assert {row["email"] for row in results} == {"one@example.com", "two@example.com"}
     assert all("access_token" not in row for row in results)
+    assert all(row["dry_run"] is True for row in results)
+    assert client.get("/api/accounts").get_json()["summary"]["registered"] == 0
 
 
 def test_pool_import_batch_reservation_and_result_lifecycle(client):
@@ -186,11 +189,8 @@ def test_pool_import_batch_reservation_and_result_lifecycle(client):
     assert job["state"] == "completed"
 
     accounts = client.get("/api/accounts").get_json()
-    assert accounts["summary"]["spare"] == 1
-    assert accounts["summary"]["registered"] == 1
-    registered = [row for row in accounts["accounts"] if row["state"] == "registered"]
-    assert len(registered) == 1
-    assert registered[0]["registered_at"].endswith("Z")
+    assert accounts["summary"]["spare"] == 2
+    assert accounts["summary"]["registered"] == 0
 
 
 def test_status_poll_configuration_and_empty_immediate_run(client):
@@ -296,6 +296,34 @@ def test_token_only_status_poll_filters_registered_accounts_and_never_uses_proto
     row = registry.lookup(["token@example.com"])["token@example.com"]
     assert row["health_status"] == "free"
     assert row["last_probe_status"] == "free"
+
+
+def test_token_only_status_poll_skips_bulk_check_when_no_registered_token_exists(client, monkeypatch):
+    email = "no-token@example.com"
+    registry = console.pool_registry()
+    registry.sync_pool({email: f"{email}----mail-pass----client----refresh"})
+    registry.record_registered_results("job_no_token", [{"email": email, "ok": True}])
+
+    def gather(*, emails):
+        assert emails == [email]
+        return [{"email": email, "refresh_token": "", "access_token": ""}]
+
+    def bulk_check(**_kwargs):
+        raise AssertionError("bulk_check must not run for an empty eligible token list")
+
+    fake_plan_check = types.SimpleNamespace(
+        _gather_candidates=gather,
+        bulk_check=bulk_check,
+    )
+    monkeypatch.setitem(sys.modules, "plan_check", fake_plan_check)
+
+    summary = console.run_token_only_status_poll({"refresh_codex_rt": True, "concurrency": 4})
+
+    assert summary["registered_total"] == 1
+    assert summary["eligible"] == 0
+    assert summary["skipped_without_token"] == 1
+    assert summary["total"] == 0
+    assert summary["errors"] == 0
 
 
 @pytest.mark.parametrize("http_status", [401, 403])

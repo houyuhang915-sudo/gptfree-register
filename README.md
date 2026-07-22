@@ -64,7 +64,7 @@ chmod +x start.sh
 FREE_CONSOLE_DRY_RUN=1 python3 app.py
 ```
 
-Dry Run 使用本地模拟执行器，不会发起外部注册请求。
+Dry Run 使用本地模拟执行器，不会发起外部注册请求，也不会生成真实凭据、写入账号池或参与健康状态轮询；页面会将这类任务标记为“演示”。
 
 ### 控制台使用
 
