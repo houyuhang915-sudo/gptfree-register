@@ -1,10 +1,14 @@
-# gptfree-register
+# Gptfree协议注册工具
 
-`gptfree-register` 是一个面向 ChatGPT 协议注册任务的独立控制台。它把账号导入、批次注册、结果归档、Agent Identity 生成、Sub2API 导入和账号状态轮询放在同一个可部署服务中。
+`gptfree-register` 是一个面向 ChatGPT 协议注册任务的独立控制台。它将账号导入、批次注册、结果归档、Agent Identity、Sub2API 交付和账号状态轮询整合在一个可部署服务中，适合将注册任务、备用账号池和后续状态管理集中运行。
 
-项目使用 `Mail Auth` 作为唯一协议内核，支持 Outlook 与 iCloud/Relay 邮箱输入；浏览器模式作为可选执行方式保留。原有工作台、数据目录和运行进程不需要参与此项目运行。
+## 项目介绍
 
-## 能做什么
+项目使用 `Mail Auth` 作为唯一协议内核，支持 Outlook 与 iCloud/Relay 邮箱输入；浏览器模式作为可选执行方式保留。服务独立保存配置、账号状态、任务日志和导出结果，不依赖原工作台的数据目录或运行进程。
+
+控制台将每个账号的流程拆成“备用池、注册批次、注册后凭据、状态追踪”四个可查看的阶段。任务从账号池领取指定数量的账号，服务端持续执行并记录结果；注册后可生成 Agent Identity、导出或自动导入 Sub2API；已注册账号则由后台轮询持续更新状态和确认存活时长。
+
+## 核心能力
 
 - **导入账号池**：一次导入 Outlook 或 iCloud/Relay 邮箱凭据，凭据写入加密 Vault，页面只展示邮箱和状态。
 - **分批注册**：从备用池按数量领取账号，服务原子预占，任务结束后自动写回已注册、失败或待重试状态。
@@ -17,7 +21,7 @@
 
 账号可用性由上游服务状态、邮箱凭据和令牌状态共同决定。控制台通过持续轮询避免把临时网络或令牌问题直接标记为账号停用，并保留已确认状态用于长期追踪；它不会承诺账号永久可用。
 
-## 工作流程
+## 运行流程
 
 ```text
 Outlook / iCloud 凭据
@@ -32,7 +36,9 @@ Outlook / iCloud 凭据
 账号状态库 <- 自动轮询 <- Sub2API 导出或自动导入
 ```
 
-## 快速开始
+## 使用教程
+
+### 快速开始
 
 要求：Python 3.11+、Node.js（Docker 镜像会自动安装）和可选的 Docker Compose。
 
@@ -54,9 +60,9 @@ FREE_CONSOLE_DRY_RUN=1 python3 app.py
 
 Dry Run 使用本地模拟执行器，不会发起外部注册请求。
 
-## 控制台使用
+### 控制台使用
 
-### 1. 配置运行环境
+#### 1. 配置运行环境
 
 进入“运行配置”按需填写：
 
@@ -68,7 +74,7 @@ Dry Run 使用本地模拟执行器，不会发起外部注册请求。
 
 敏感配置保存在 `data/settings.json`，接口读取时会隐藏密钥字段。
 
-### 2. 导入账号池
+#### 2. 导入账号池
 
 在“账号池”中选择导入，支持以下格式：
 
@@ -82,11 +88,11 @@ relay@example.com----https://relay.example.com/otp-endpoint
 
 导入后账号状态为“待注册”。新建任务时选择“账号池”，填写本批数量；服务会在启动前预占本批账号，避免并行任务重复领取。
 
-### 3. 创建注册任务
+#### 3. 创建注册任务
 
 在“新建任务”中选择协议方式时，`Mail Auth` 是唯一选项，表示该协议同时覆盖 Outlook 和 iCloud/Relay 邮箱。设置并发、代理和注册后动作后提交任务。任务在服务端执行，关闭浏览器不影响任务继续运行。
 
-### 4. 生成并导入 Sub2API
+#### 4. 生成并导入 Sub2API
 
 选择“Agent Identity”作为注册后动作后，可启用：
 
@@ -102,7 +108,7 @@ GATEWAY_SUB2API_AGENT_PATH=/api/v1/admin/accounts/import/codex-session
 GATEWAY_SUB2API_GROUP_IDS=2
 ```
 
-### 5. 启用自动轮询
+#### 5. 启用自动轮询
 
 账号池页面的“自动轮询”支持：
 
@@ -114,7 +120,7 @@ GATEWAY_SUB2API_GROUP_IDS=2
 
 轮询仅使用已保存的 Codex RT 或 Access Token，不会发起邮箱协议登录。`401/403` 等令牌异常会记录为待复核，避免错误覆盖已确认的账号状态。确认存活时长从最后一次成功确认开始累计，并在账号池列表中展示。
 
-## Docker 部署
+### Docker 部署
 
 ```bash
 cp .env.example .env
@@ -135,7 +141,7 @@ FREE_CONSOLE_BIND_ADDRESS=127.0.0.1
 
 如需公网访问，建议通过 `deploy/nginx.conf.example` 配置 HTTPS 反向代理，而不是直接暴露服务端口。
 
-## systemd 部署
+### systemd 部署
 
 ```bash
 sudo useradd --system --home /opt/gptfree-register --shell /usr/sbin/nologin freeops
