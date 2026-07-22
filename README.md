@@ -1,72 +1,123 @@
-# Free Register Console
+# gptfree-register
 
-Free Register Console 是一个可独立部署的注册任务与账号状态控制台，包含响应式 Web UI、任务队列、实时日志、结果聚合、账号池和自动状态轮询。
+`gptfree-register` 是一个面向 ChatGPT 协议注册任务的独立控制台。它把账号导入、批次注册、结果归档、Agent Identity 生成、Sub2API 导入和账号状态轮询放在同一个可部署服务中。
 
-## 项目边界
+项目使用 `Mail Auth` 作为唯一协议内核，支持 Outlook 与 iCloud/Relay 邮箱输入；浏览器模式作为可选执行方式保留。原有工作台、数据目录和运行进程不需要参与此项目运行。
 
-- `app.py`：独立 Flask API、任务进程、持久化状态、代理/SMS 检查。
-- `templates/` + `static/`：独立运营控制台 UI。
-- `core/`：Free 注册所需运行时副本。
-  - protocol：Mail Auth 兼容内核，同时支持 Outlook 与 iCloud 邮箱；
-  - browser：BitBrowser / RoxyBrowser / Chromium；
-  - Agent Identity；
-  - platform/manual 手机绑定与 Codex RT；
-  - Free trial 检查、账号落库和 Sub2API Agent 导入。
-- `data/`：运行配置、账号池、任务元数据和临时输入。
-- `output/`：任务日志、独立 JSONL 结果和核心账号产物。
+## 能做什么
 
-## 服务端职责
+- **导入账号池**：一次导入 Outlook 或 iCloud/Relay 邮箱凭据，凭据写入加密 Vault，页面只展示邮箱和状态。
+- **分批注册**：从备用池按数量领取账号，服务原子预占，任务结束后自动写回已注册、失败或待重试状态。
+- **Mail Auth 协议注册**：唯一内置的协议实现，支持 Outlook 和 iCloud/Relay OTP 路径。
+- **浏览器注册**：可选 BitBrowser、RoxyBrowser 或本地 Chromium 执行方式。
+- **Agent Identity**：注册完成后可生成 Ed25519 Agent Identity，并保存为可导出的 `auth.json` 数据。
+- **Sub2API 自动导入**：任务可生成 Sub2API 导入文件，也可在填写 Sub2API 地址、API Key、接口路径和分组后，自动推送本批 Agent Identity。
+- **自动状态轮询**：后台可按间隔刷新 Codex RT 并探测现有 Access Token，记录最近探测、最后确认状态与确认存活时长。
+- **长期账号管理**：账号状态、轮询记录、任务日志和导出结果都持久化到挂载目录，服务重启后继续保留。
 
-服务端提供独立运行时和持久化层：
+账号可用性由上游服务状态、邮箱凭据和令牌状态共同决定。控制台通过持续轮询避免把临时网络或令牌问题直接标记为账号停用，并保留已确认状态用于长期追踪；它不会承诺账号永久可用。
 
-- 加密保存备用账号凭据，并将库存、批次预占、注册结果和健康状态写入独立数据目录；
-- 后台执行注册与存活检测任务，浏览器关闭或断开后任务继续运行；
-- 对每批账号原子预占，避免两个任务领取同一账号；
-- 聚合任务结果、日志和存活时长，页面只读取非敏感状态；
-- 每个部署使用自己的数据目录、配置和运行记录。
+## 工作流程
 
-## 账号池与存活检测
+```text
+Outlook / iCloud 凭据
+        |
+        v
+账号池导入 -> 分批预占 -> Mail Auth 或 Browser 注册
+        |                                  |
+        |                                  v
+        |                        Agent Identity / 手机绑定
+        |                                  |
+        v                                  v
+账号状态库 <- 自动轮询 <- Sub2API 导出或自动导入
+```
 
-- “账号池”保存备用 Outlook / iCloud 凭据，可一次导入最多 1000 条；凭据由独立加密 Vault 管理，页面和任务列表只显示邮箱与状态。
-- 从账号池创建任务时设置“本批数量”，服务会原子预占该批账号；任务结束后自动写回为“已注册”或“注册失败”，未领取账号继续留在备用池。
-- 已注册账号的“确认存活时长”只累计到最后一次成功确认，不会把账号年龄当成测活结果；页面同时展示最近探测与最后确认时间。
-- 检测结果会保留已确认套餐，暂时网络或令牌错误会标记为待复核，不会直接覆盖上一次确认状态；订阅过期仍显示为账号可用。
-- 自动轮询默认启用，每 60 分钟、并发 4。它只检查已注册且已有 Codex RT 或现有 Access Token 的账号：可选刷新 Codex RT，随后使用 `/backend-api/me` 进行实时探测；不会触发 Outlook/Relay 协议登录。已配置托管代理时，RT 刷新与 AT 探测经该代理执行；没有 RT/AT 的已注册账号会跳过并显示在轮询摘要中。
-- 所有记录以 UTC ISO 时间保存；页面默认按 `Asia/Shanghai` 显示。可在“运行配置 → 运行时”调整显示时区。
+## 快速开始
 
-## 本地启动
+要求：Python 3.11+、Node.js（Docker 镜像会自动安装）和可选的 Docker Compose。
 
 ```bash
-cd free-register-console
+git clone https://github.com/houyuhang915-sudo/gptfree-register.git
+cd gptfree-register
 cp .env.example .env
-# 编辑 .env，至少设置 FREE_CONSOLE_PASSWORD 和代理配置
 chmod +x start.sh
 ./start.sh
 ```
 
-打开 `http://127.0.0.1:8866`。如果设置了 `FREE_CONSOLE_PASSWORD`，浏览器会使用 HTTP Basic Authentication；用户名可填写任意值。
+打开 <http://127.0.0.1:8866>。设置 `FREE_CONSOLE_PASSWORD` 后，控制台启用 HTTP Basic Authentication，用户名可任意填写。
 
-开发检查可直接运行：
+本地仅检查 UI 和任务流程时，使用 Dry Run：
 
 ```bash
 FREE_CONSOLE_DRY_RUN=1 python3 app.py
 ```
 
-Dry-run 会使用 `scripts/fake_runner.py` 生成本地演示结果，不发起外部注册请求。
+Dry Run 使用本地模拟执行器，不会发起外部注册请求。
 
-## 发布包
+## 控制台使用
 
-```bash
-./scripts/package_release.sh
+### 1. 配置运行环境
+
+进入“运行配置”按需填写：
+
+- 接码平台参数；
+- 托管代理的地址、端口、用户名和密码；
+- Sub2API 的 Base URL、API Key、Agent 导入接口与 Group IDs；
+- 浏览器宿主地址；
+- 显示时区，默认 `Asia/Shanghai`。
+
+敏感配置保存在 `data/settings.json`，接口读取时会隐藏密钥字段。
+
+### 2. 导入账号池
+
+在“账号池”中选择导入，支持以下格式：
+
+```text
+# Outlook
+email@example.com----mail-password----microsoft-client-id----microsoft-refresh-token
+
+# iCloud / Relay
+relay@example.com----https://relay.example.com/otp-endpoint
 ```
 
-脚本会生成父目录中的 `free-register-console-0.1.0.tar.gz`，并校验归档不包含 `.env`、账号凭据、任务输入、运行日志、缓存或本机软链接。
+导入后账号状态为“待注册”。新建任务时选择“账号池”，填写本批数量；服务会在启动前预占本批账号，避免并行任务重复领取。
+
+### 3. 创建注册任务
+
+在“新建任务”中选择协议方式时，`Mail Auth` 是唯一选项，表示该协议同时覆盖 Outlook 和 iCloud/Relay 邮箱。设置并发、代理和注册后动作后提交任务。任务在服务端执行，关闭浏览器不影响任务继续运行。
+
+### 4. 生成并导入 Sub2API
+
+选择“Agent Identity”作为注册后动作后，可启用：
+
+1. **生成 Sub2API 导入文件**：把本批成功账号导出为可导入的 JSON。
+2. **自动导入 Sub2API**：任务结束后调用运行配置中的 Codex Session 导入接口，并将结果写入任务日志。
+
+自动导入依赖以下配置：
+
+```dotenv
+GATEWAY_SUB2API_URL=https://sub2api.example.com
+GATEWAY_SUB2API_TOKEN=your-api-key
+GATEWAY_SUB2API_AGENT_PATH=/api/v1/admin/accounts/import/codex-session
+GATEWAY_SUB2API_GROUP_IDS=2
+```
+
+### 5. 启用自动轮询
+
+账号池页面的“自动轮询”支持：
+
+- 开启或暂停后台轮询；
+- 设置 15 到 1440 分钟的间隔；
+- 设置 1 到 8 的探测并发；
+- 选择是否先刷新 Codex RT；
+- 使用“立即轮询”执行一次后台任务。
+
+轮询仅使用已保存的 Codex RT 或 Access Token，不会发起邮箱协议登录。`401/403` 等令牌异常会记录为待复核，避免错误覆盖已确认的账号状态。确认存活时长从最后一次成功确认开始累计，并在账号池列表中展示。
 
 ## Docker 部署
 
 ```bash
 cp .env.example .env
-# 必须设置 FREE_CONSOLE_PASSWORD，并按需填写代理、SMS、Sub2API 配置
 mkdir -p deploy-data/data deploy-data/output
 sudo chown -R 10001:10001 deploy-data
 docker compose up -d --build
@@ -74,7 +125,7 @@ docker compose ps
 curl http://127.0.0.1:8866/api/health
 ```
 
-Compose 默认仅绑定到 `127.0.0.1`，由 Nginx 作为公网入口。容器内端口、宿主端口和绑定地址都可以在 `.env` 调整：
+默认仅绑定本机回环地址：
 
 ```dotenv
 FREE_CONSOLE_PORT=8866
@@ -82,55 +133,57 @@ FREE_CONSOLE_PUBLISH_PORT=18866
 FREE_CONSOLE_BIND_ADDRESS=127.0.0.1
 ```
 
-此时健康检查仍走容器内 `8866`，Nginx upstream 改为 `127.0.0.1:18866`。若不使用 Nginx，才将 `FREE_CONSOLE_BIND_ADDRESS` 显式改为 `0.0.0.0`。
-
-容器内 Gunicorn 固定为一个 worker、多个 threads：任务进程句柄由单个服务进程管理，多线程负责 API 和日志轮询。账号执行并发由页面中的 `workers` 控制。
-
-### Nginx
-
-复制 `deploy/nginx.conf.example` 到服务器 Nginx 配置，替换域名、证书路径和 upstream 端口后启用。模板将 HTTP 跳转到 HTTPS；控制台自身的 `FREE_CONSOLE_PASSWORD` 继续保留。
+如需公网访问，建议通过 `deploy/nginx.conf.example` 配置 HTTPS 反向代理，而不是直接暴露服务端口。
 
 ## systemd 部署
 
 ```bash
-sudo useradd --system --home /opt/free-register-console --shell /usr/sbin/nologin freeops
-sudo install -d -o freeops -g freeops /opt/free-register-console
-sudo rsync -a --chown=freeops:freeops ./ /opt/free-register-console/
-cd /opt/free-register-console
+sudo useradd --system --home /opt/gptfree-register --shell /usr/sbin/nologin freeops
+sudo install -d -o freeops -g freeops /opt/gptfree-register
+sudo rsync -a --chown=freeops:freeops ./ /opt/gptfree-register/
+cd /opt/gptfree-register
 sudo -u freeops -H python3 -m venv .venv
 sudo -u freeops -H .venv/bin/pip install -r requirements.txt
 sudo -u freeops -H cp .env.example .env
-# 设置 .env 中的 FREE_CONSOLE_PASSWORD 和运行配置
-sudo cp deploy/free-register-console.service /etc/systemd/system/
+sudo cp deploy/gptfree-register.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now free-register-console
+sudo systemctl enable --now gptfree-register
 ```
 
-## 数据与备份
+## 数据、备份与更新
 
-需要备份的目录只有：
+以下目录包含运行状态，应作为部署备份的一部分：
 
 ```text
-data/settings.json          # 运行配置（0600）
-data/status_poll.json       # 自动轮询配置（0600）
-data/accounts/              # Outlook / Relay 账号池（0600）
-data/account_vault/         # 加密账号仓储
-data/pool_state.db          # 备用池与已注册账号的非敏感状态
+data/settings.json          # 配置和密钥，权限 0600
+data/status_poll.json       # 自动轮询配置
+data/accounts/              # 邮箱账号池
+data/account_vault/         # 加密凭据 Vault
+data/pool_state.db          # 账号池状态与存活记录
 data/jobs/                  # 任务元数据
-output/jobs/                # 完整日志
-output/results/             # 每批独立 JSONL
-output/core/                # success.txt、Agent Identity、导出文件等
-output/health/              # 存活检测日志
+output/jobs/                # 任务日志
+output/results/             # 每批 JSONL 结果
+output/core/                # Agent Identity、Sub2API 导出等产物
 ```
 
-任务输入和代理池写入 `data/inputs/`，权限为 `0600`，子进程结束后自动删除。异常重启时残留文件可在确认没有运行任务后清理。
+可生成不带运行数据和密钥的代码发布包：
 
-## 浏览器模式说明
+```bash
+./scripts/package_release.sh
+```
 
-protocol 模式最适合 Linux 服务器。browser 模式还需要满足其一：
+在从 GitHub 克隆的 `gptfree-register` 目录中执行时，脚本会生成 `gptfree-register-0.1.0.tar.gz`。
 
-1. BitBrowser API 可从服务进程访问；
-2. RoxyBrowser API 可从服务进程访问；
-3. 主机安装 Chromium，并为服务进程提供图形会话。
+## 开发检查
 
-Docker 默认安装 Chromium，但普通服务器部署仍建议优先使用 protocol。浏览器宿主地址可在“运行配置 → 浏览器宿主”修改。
+```bash
+PYTHONPATH=. pytest -q tests
+node --check static/app.js
+python3 -m py_compile app.py account_registry.py core/scripts/run_email_proto_register.py
+```
+
+GitHub Actions 会对每次 push 和 pull request 运行相同的测试。
+
+## License
+
+[MIT](LICENSE)

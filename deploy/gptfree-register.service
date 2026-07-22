@@ -1,5 +1,5 @@
 [Unit]
-Description=Free Register Console
+Description=gptfree-register
 After=network-online.target
 Wants=network-online.target
 
@@ -7,9 +7,9 @@ Wants=network-online.target
 Type=simple
 User=freeops
 Group=freeops
-WorkingDirectory=/opt/free-register-console
-EnvironmentFile=-/opt/free-register-console/.env
-ExecStart=/opt/free-register-console/start.sh
+WorkingDirectory=/opt/gptfree-register
+EnvironmentFile=-/opt/gptfree-register/.env
+ExecStart=/opt/gptfree-register/start.sh
 Restart=always
 RestartSec=3
 KillMode=mixed

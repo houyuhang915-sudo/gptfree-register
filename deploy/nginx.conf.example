@@ -1,16 +1,16 @@
 server {
     listen 80;
-    server_name free-register.example.com;
+    server_name gptfree-register.example.com;
     return 301 https://$host$request_uri;
 }
 
 server {
     listen 443 ssl;
     http2 on;
-    server_name free-register.example.com;
+    server_name gptfree-register.example.com;
 
-    ssl_certificate /etc/letsencrypt/live/free-register.example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/free-register.example.com/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/gptfree-register.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/gptfree-register.example.com/privkey.pem;
 
     client_max_body_size 2m;
     proxy_read_timeout 3600s;

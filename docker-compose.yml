@@ -1,7 +1,7 @@
 services:
-  free-register-console:
+  gptfree-register:
     build: .
-    image: free-register-console:latest
+    image: gptfree-register:latest
     restart: unless-stopped
     env_file:
       - .env

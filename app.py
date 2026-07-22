@@ -799,7 +799,7 @@ def api_health():
     }
     return jsonify({
         "ok": all(checks.values()),
-        "service": "free-register-console",
+        "service": "gptfree-register",
         "version": "0.1.0",
         "time": utc_now(),
         "local_time": local_now(),
