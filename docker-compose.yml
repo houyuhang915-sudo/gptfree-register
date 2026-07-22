@@ -1,0 +1,20 @@
+services:
+  free-register-console:
+    build: .
+    image: free-register-console:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${FREE_CONSOLE_BIND_ADDRESS:-127.0.0.1}:${FREE_CONSOLE_PUBLISH_PORT:-8866}:${FREE_CONSOLE_PORT:-8866}"
+    volumes:
+      - ./deploy-data/data:/app/data
+      - ./deploy-data/output:/app/output
+    shm_size: "1gb"
+    init: true
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${FREE_CONSOLE_PORT:-8866}/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

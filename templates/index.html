@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#11140f">
+  <title>Free Register Console</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='3' fill='%23151811'/%3E%3Cpath d='M7 22h4V15H7zm7 0h4V10h-4zm7 0h4V6h-4z' fill='%23c8ff3d'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#overview" data-nav="overview" aria-label="Free Register Console">
+        <span class="brand-mark"><i></i><i></i><i></i></span>
+        <span><strong>FREE//OPS</strong><small>REGISTER CONSOLE</small></span>
+      </a>
+
+      <nav class="main-nav" aria-label="主导航">
+        <p class="nav-eyebrow">Workspace</p>
+        <button class="nav-item active" data-nav="overview"><span class="nav-icon">⌂</span><span>概览</span></button>
+        <button class="nav-item" data-nav="launch"><span class="nav-icon">＋</span><span>新建任务</span><kbd>N</kbd></button>
+        <button class="nav-item" data-nav="pool"><span class="nav-icon">▦</span><span>账号池</span><em id="navPoolCount">0</em></button>
+        <button class="nav-item" data-nav="jobs"><span class="nav-icon">≡</span><span>任务队列</span><em id="navRunningCount">0</em></button>
+        <button class="nav-item" data-nav="results"><span class="nav-icon">✓</span><span>注册结果</span></button>
+        <p class="nav-eyebrow nav-section">System</p>
+        <button class="nav-item" data-nav="settings"><span class="nav-icon">⚙</span><span>运行配置</span></button>
+      </nav>
+
+      <div class="sidebar-foot">
+        <div class="health-pulse"><span id="sideHealthDot"></span><div><strong id="sideHealthText">检查服务中</strong><small id="sideHealthSub">CORE / API</small></div></div>
+        <div class="version-row"><span>Standalone runtime</span><code>v0.1.0</code></div>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <button class="mobile-menu" id="mobileMenu" aria-label="打开菜单">☰</button>
+        <div class="breadcrumb"><span>FREE REGISTER</span><b>/</b><strong id="pageCrumb">概览</strong></div>
+        <div class="top-actions">
+          <div class="live-clock"><i></i><span id="liveClock">--:--:--</span></div>
+          <button class="icon-button" id="refreshButton" title="刷新数据">↻</button>
+          <button class="primary compact" data-nav="launch"><span>＋</span> 新建任务</button>
+        </div>
+      </header>
+
+      <section class="view active" id="view-overview" data-view="overview">
+        <div class="page-heading editorial-heading">
+          <div>
+            <p class="kicker">OPERATIONS / TODAY</p>
+            <h1>注册运行台</h1>
+            <p>协议注册、浏览器流程、Agent Identity 与手机绑定，集中在一个独立服务中。</p>
+          </div>
+          <button class="primary hero-action" data-nav="launch"><span>启动一批</span><b>↗</b></button>
+        </div>
+
+        <div class="metric-strip">
+          <article class="metric featured"><p>运行中</p><div><strong id="metricRunning">0</strong><span>ACTIVE</span></div><small id="metricRunningSub">当前没有任务占用执行槽</small></article>
+          <article class="metric"><p>今日成功</p><div><strong id="metricSuccess">0</strong><span>ACCOUNTS</span></div><small>按任务结果实时聚合</small></article>
+          <article class="metric"><p>今日失败</p><div><strong id="metricFailed">0</strong><span>NEEDS REVIEW</span></div><small>可在日志中定位阶段</small></article>
+          <article class="metric"><p>成功率</p><div><strong id="metricRate">—</strong><span>LAST 24H</span></div><small>已结束的账号结果</small></article>
+        </div>
+
+        <div class="overview-grid">
+          <section class="surface activity-surface">
+            <div class="section-head"><div><p class="section-index">01</p><h2>执行现场</h2></div><button class="text-button" data-nav="jobs">查看全部 <span>→</span></button></div>
+            <div id="overviewJobs" class="activity-list skeleton-host"></div>
+          </section>
+
+          <aside class="surface readiness-surface">
+            <div class="section-head"><div><p class="section-index">02</p><h2>服务状态</h2></div><span class="status-pill neutral" id="healthPill">CHECKING</span></div>
+            <div class="readiness-score"><div class="score-ring" id="scoreRing"><strong id="healthScore">0</strong><small>%</small></div><div><b id="healthTitle">正在检查运行时</b><p id="healthMessage">核对核心脚本、依赖与写入目录。</p></div></div>
+            <div class="check-list" id="healthChecks"></div>
+            <button class="secondary full" data-nav="settings">打开运行配置 <span>↗</span></button>
+          </aside>
+        </div>
+
+        <section class="workflow-band">
+          <div><p class="section-index inverse">03 / FLOW MAP</p><h2>一条清晰的执行链</h2><p>每个账号独立落结果；注册成功后再按配置进入凭据或手机阶段。</p></div>
+          <ol>
+            <li><span>01</span><b>邮箱凭据</b><small>Outlook RT / Relay</small></li>
+            <li><span>02</span><b>注册内核</b><small>Mail Auth / Browser</small></li>
+            <li><span>03</span><b>身份材料</b><small>Free AT / Agent / Codex RT</small></li>
+            <li><span>04</span><b>结果归档</b><small>JSONL / Log / Sub2API</small></li>
+          </ol>
+        </section>
+      </section>
+
+      <section class="view" id="view-pool" data-view="pool">
+        <div class="page-heading">
+          <div><p class="kicker">ACCOUNT INVENTORY / BACKUP</p><h1>账号池</h1><p>批量导入备用邮箱凭据；每次只领取一批进入 Free 注册，已注册账号保留存活记录。</p></div>
+          <div class="heading-actions"><button class="secondary" id="poolImportButton">导入账号</button><button class="primary" id="poolLaunchButton">＋ 创建批次</button></div>
+        </div>
+
+        <div class="result-stats pool-stats">
+          <div><span>待注册备用</span><strong id="poolSpare">0</strong></div>
+          <div><span>任务占用</span><strong id="poolReserved">0</strong></div>
+          <div><span>已注册账号</span><strong id="poolRegistered">0</strong></div>
+          <div><span>已确认存活</span><strong id="poolAlive">0</strong></div>
+        </div>
+
+        <section class="surface status-poll-surface">
+          <div class="status-poll-heading">
+            <div>
+              <p class="section-index">AUTOMATION / RT + AT</p>
+              <div class="status-poll-title"><h2>自动轮询</h2><span class="status-pill neutral" id="statusPollPill">读取中</span></div>
+              <p id="statusPollStatus">仅使用 Codex RT 和现有 AT，不走协议登录。</p>
+            </div>
+            <small id="statusPollNext">正在读取计划…</small>
+          </div>
+          <div class="status-poll-controls">
+            <label class="status-poll-toggle"><span><b>启用后台轮询</b><small>已注册账号池</small></span><input id="statusPollEnabled" type="checkbox"><i></i></label>
+            <label class="status-poll-field"><span>间隔（分钟）</span><input id="statusPollInterval" type="number" min="15" max="1440" value="60" inputmode="numeric"></label>
+            <label class="status-poll-field"><span>并发</span><input id="statusPollConcurrency" type="number" min="1" max="8" value="4" inputmode="numeric"></label>
+            <label class="status-poll-toggle"><span><b>刷新 Codex RT</b><small>刷新后继续实时探测</small></span><input id="statusPollRefreshRt" type="checkbox" checked><i></i></label>
+            <div class="status-poll-buttons"><button class="secondary compact" id="saveStatusPoll">保存</button><button class="primary compact" id="runStatusPoll">立即轮询</button></div>
+          </div>
+        </section>
+
+        <div class="filter-bar pool-filter-bar">
+          <div class="filter-tabs" id="poolFilters"><button class="active" data-pool-state="">全部</button><button data-pool-state="spare">待注册</button><button data-pool-state="reserved">占用中</button><button data-pool-state="registered">已注册</button><button data-pool-state="failed">失败</button></div>
+          <label class="search-box"><span>⌕</span><input id="poolSearch" placeholder="搜索邮箱"></label>
+        </div>
+        <section class="surface table-surface"><div class="table-wrap"><table><thead><tr><th>账号</th><th>类型</th><th>库存状态</th><th>注册时间</th><th>确认存活时长</th><th>健康状态</th><th>最近探测</th></tr></thead><tbody id="poolTableBody"></tbody></table></div><div id="poolEmpty" class="empty-state hidden"><span>▦</span><h3>账号池为空</h3><p>导入 Outlook 或 iCloud 凭据后，可按本批数量创建注册任务。</p></div></section>
+      </section>
+
+      <section class="view" id="view-launch" data-view="launch">
+        <div class="page-heading">
+          <div><p class="kicker">NEW RUN / COMPOSE</p><h1>新建注册任务</h1><p>从账号源到结果交付，按运行阶段完成编排。</p></div>
+          <div class="draft-state"><i></i><span>配置自动保留在当前页面</span></div>
+        </div>
+
+        <form id="launchForm" class="composer-grid">
+          <div class="composer-main">
+            <section class="surface form-section">
+              <div class="form-section-head"><span>01</span><div><h2>账号来源</h2><p>完整凭据会写入 0600 临时文件，任务结束后清理。</p></div><button type="button" class="text-button" id="openImport">导入到服务端账号池</button></div>
+              <div class="account-toolbar">
+                <label class="source-option"><input type="radio" name="accountSource" value="paste" checked><span><b>本次粘贴</b><small>四段 Outlook 或 Relay</small></span></label>
+                <label class="source-option"><input type="radio" name="accountSource" value="pool"><span><b>服务端账号池</b><small id="poolCountText">读取中…</small></span></label>
+              </div>
+              <div id="accountPastePanel">
+                <label class="field-label" for="accountsInput">账号列表 <span>email----password----client_id----refresh_token</span></label>
+                <div class="textarea-shell">
+                  <textarea id="accountsInput" rows="9" spellcheck="false" placeholder="operator@outlook.com----mail_password----client_id----refresh_token&#10;relay@icloud.com----https://mail-relay.example/otp/TOKEN"></textarea>
+                  <div class="textarea-meta"><span><i></i> 凭据仅进入本地任务文件</span><b id="accountCount">0 个账号</b></div>
+                </div>
+              </div>
+              <div id="accountPoolPanel" class="pool-selection hidden">
+                <div><strong id="poolSelectionTitle">从备用池领取本批账号</strong><p>留空时按导入顺序领取待注册账号；填写邮箱可指定本批对象。</p></div>
+                <div class="pool-batch-controls">
+                  <label><span>本批数量</span><div class="number-field"><input id="poolBatchSize" type="number" min="1" max="500" value="10"><small>accounts</small></div></label>
+                  <label class="switch-line compact-switch"><span><b>包含失败账号</b><small>用于重新尝试</small></span><input id="poolRetryFailed" type="checkbox"><i></i></label>
+                </div>
+                <textarea id="poolFilter" rows="4" placeholder="留空 = 领取最早的待注册账号&#10;alice@outlook.com"></textarea>
+                <p class="pool-selection-note" id="poolBatchNote">备用池读取中…</p>
+              </div>
+            </section>
+
+            <section class="surface form-section">
+              <div class="form-section-head"><span>02</span><div><h2>注册内核</h2><p>协议适合服务器并发；浏览器模式需要对应宿主环境。</p></div></div>
+              <div class="choice-grid two">
+                <label class="choice-card"><input type="radio" name="method" value="protocol" checked><i class="choice-signal"></i><span><b>Protocol</b><small>HTTP · 无窗口 · 1–32 并发</small></span><em>推荐</em></label>
+                <label class="choice-card"><input type="radio" name="method" value="browser"><i class="choice-signal"></i><span><b>Browser</b><small>指纹浏览器 · 3×2 槽位</small></span></label>
+              </div>
+              <div id="protocolOptions" class="option-panel">
+                <div class="field-grid">
+                  <label><span>协议内核</span><select id="protocolEngine"><option value="mail_auth">Mail Auth · Outlook &amp; iCloud</option></select></label>
+                  <label><span>注册并发</span><div class="number-field"><input id="workers" type="number" min="1" max="32" value="3"><small>workers</small></div></label>
+                  <label><span>邮箱 OTP 等待</span><div class="number-field"><input id="otpTimeout" type="number" min="30" max="900" value="90"><small>seconds</small></div></label>
+                </div>
+                <label class="switch-line"><span><b>设置 ChatGPT 密码</b><small>关闭后会进入无密码兼容路径</small></span><input id="withPassword" type="checkbox" checked><i></i></label>
+              </div>
+              <div id="browserOptions" class="option-panel hidden">
+                <div class="field-grid">
+                  <label><span>浏览器运行时</span><select id="browserChoice"><option value="bitbrowser">BitBrowser</option><option value="roxy">RoxyBrowser</option><option value="chromium">Local Chromium</option></select></label>
+                  <label><span>浏览器并发</span><div class="number-field"><input id="browserWorkers" type="number" min="1" max="6" value="6"><small>max 6</small></div></label>
+                </div>
+              </div>
+            </section>
+
+            <section class="surface form-section">
+              <div class="form-section-head"><span>03</span><div><h2>网络出口</h2><p>单代理适合验证，托管池会按账号轮换粘性会话。</p></div><button type="button" class="text-button" id="testProxy">测试出口</button></div>
+              <div class="segmented" id="proxyModeControl">
+                <label><input type="radio" name="proxyMode" value="managed_jp" checked><span>JP 托管池</span></label>
+                <label><input type="radio" name="proxyMode" value="managed_us"><span>US 托管池</span></label>
+                <label><input type="radio" name="proxyMode" value="single"><span>单代理</span></label>
+                <label><input type="radio" name="proxyMode" value="pool"><span>自定义池</span></label>
+              </div>
+              <div id="managedProxyPanel" class="proxy-summary"><span class="proxy-orbit"><i></i></span><div><b id="managedProxyTitle">Japan · 100 sessions</b><p>10 分钟粘性出口，服务端按账号顺序轮换。</p></div><em id="proxyTestBadge">UNTESTED</em></div>
+              <div id="singleProxyPanel" class="hidden"><label class="field-label">代理 URL</label><input id="singleProxy" placeholder="http://user:pass@host:port"></div>
+              <div id="poolProxyPanel" class="hidden"><label class="field-label">代理池 <span>可选 REGION|proxy-url</span></label><textarea id="proxyPool" rows="5" placeholder="JP|http://user:pass@host:port&#10;US|socks5://user:pass@host:port"></textarea></div>
+              <div id="proxyTestResult" class="inline-result hidden"></div>
+            </section>
+
+            <section class="surface form-section">
+              <div class="form-section-head"><span>04</span><div><h2>注册后动作</h2><p>Agent Identity 与手机绑定互斥，按最终凭据用途选择。</p></div></div>
+              <div class="choice-grid three post-action-grid">
+                <label class="choice-card"><input type="radio" name="postAction" value="agent" checked><i class="choice-signal"></i><span><b>Agent Identity</b><small>Ed25519 · Codex auth.json</small></span><em>无接码</em></label>
+                <label class="choice-card"><input type="radio" name="postAction" value="phone"><i class="choice-signal"></i><span><b>手机绑定</b><small>add-phone · Codex RT</small></span></label>
+                <label class="choice-card"><input type="radio" name="postAction" value="none"><i class="choice-signal"></i><span><b>仅注册</b><small>保留 Free access token</small></span></label>
+              </div>
+              <div id="agentOptions" class="option-panel">
+                <label class="switch-line"><span><b>生成 Sub2API 导入文件</b><small>任务结束后按本批 Agent 生成 JSON</small></span><input id="sub2Export" type="checkbox" checked><i></i></label>
+                <label class="switch-line"><span><b>自动导入 Sub2API</b><small>使用运行配置中的 Codex Session 接口</small></span><input id="sub2Import" type="checkbox"><i></i></label>
+              </div>
+              <div id="phoneOptions" class="option-panel hidden">
+                <div class="segmented compact-segment">
+                  <label><input type="radio" name="smsSource" value="platform" checked><span>平台自动取号</span></label>
+                  <label><input type="radio" name="smsSource" value="manual"><span>手动号码</span></label>
+                </div>
+                <div id="manualPhonePanel" class="hidden"><label class="field-label">号码与 SMS API</label><textarea id="phoneLines" rows="4" placeholder="+15551234567----https://sms.example/code?id=TOKEN"></textarea></div>
+                <div class="field-grid four">
+                  <label><span>接码并发</span><input id="smsWorkers" type="number" min="1" max="32" value="3"></label>
+                  <label><span>单号等待</span><input id="smsOtpTimeout" type="number" min="30" max="600" value="30"></label>
+                  <label><span>换号次数</span><input id="smsAttempts" type="number" min="1" max="10" value="3"></label>
+                  <label><span>OTP 补发</span><input id="smsRetries" type="number" min="0" max="5" value="2"></label>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <aside class="composer-aside">
+            <div class="surface run-ticket">
+              <div class="ticket-top"><span>RUN TICKET</span><i id="ticketStatusDot"></i></div>
+              <label><span>任务名称</span><input id="runName" placeholder="Free batch · JP"></label>
+              <div class="ticket-summary">
+                <div><span>账号</span><b id="summaryAccounts">0</b></div>
+                <div><span>方式</span><b id="summaryMethod">Protocol / Mail Auth</b></div>
+                <div><span>并发</span><b id="summaryWorkers">3</b></div>
+                <div><span>出口</span><b id="summaryProxy">JP · 100</b></div>
+                <div><span>凭据</span><b id="summaryCredential">Agent Identity</b></div>
+              </div>
+              <div class="ticket-line"></div>
+              <div class="preflight"><p>PRE-FLIGHT</p><ul id="preflightList"><li class="pending"><i></i>等待账号输入</li><li class="ok"><i></i>注册内核已选择</li><li class="pending"><i></i>代理配置待验证</li></ul></div>
+              <button type="submit" class="primary launch-button" id="launchButton"><span>启动注册任务</span><b>→</b></button>
+              <p class="launch-note">提交后可关闭页面，任务由服务端持续执行。</p>
+            </div>
+          </aside>
+        </form>
+      </section>
+
+      <section class="view" id="view-jobs" data-view="jobs">
+        <div class="page-heading"><div><p class="kicker">EXECUTION / QUEUE</p><h1>任务队列</h1><p>查看进度、阶段日志、结果计数与运行时长。</p></div><div class="heading-actions"><button class="secondary" id="refreshJobs">↻ 刷新</button><button class="primary" data-nav="launch">＋ 新建任务</button></div></div>
+        <div class="filter-bar"><div class="filter-tabs" id="jobFilters"><button class="active" data-filter="all">全部</button><button data-filter="running">运行中</button><button data-filter="completed">已完成</button><button data-filter="failed">异常</button></div><label class="search-box"><span>⌕</span><input id="jobSearch" placeholder="搜索任务名或 ID"></label></div>
+        <section class="surface table-surface"><div class="table-wrap"><table><thead><tr><th>任务</th><th>模式</th><th>进度</th><th>结果</th><th>耗时</th><th>创建时间</th><th></th></tr></thead><tbody id="jobsTableBody"></tbody></table></div><div id="jobsEmpty" class="empty-state hidden"><span>∅</span><h3>没有匹配的任务</h3><p>创建一个任务后，执行状态会出现在这里。</p></div></section>
+      </section>
+
+      <section class="view" id="view-results" data-view="results">
+        <div class="page-heading"><div><p class="kicker">OUTPUT / ACCOUNTS</p><h1>注册结果</h1><p>跨任务聚合账号状态，不在列表中暴露 token 内容。</p></div><button class="secondary" id="refreshResults">↻ 刷新结果</button></div>
+        <div class="result-stats"><div><span>总结果</span><strong id="resultTotal">0</strong></div><div><span>Agent Ready</span><strong id="resultAgent">0</strong></div><div><span>Phone Bound</span><strong id="resultPhone">0</strong></div><div><span>需处理</span><strong id="resultErrors">0</strong></div></div>
+        <div class="filter-bar"><div class="filter-tabs" id="resultFilters"><button class="active" data-filter="all">全部</button><button data-filter="agent_ready">Agent</button><button data-filter="phone_bound">已绑号</button><button data-filter="registered">仅注册</button><button data-filter="failed">异常</button></div><label class="search-box"><span>⌕</span><input id="resultSearch" placeholder="搜索邮箱"></label></div>
+        <section class="surface table-surface"><div class="table-wrap"><table><thead><tr><th>账号</th><th>状态</th><th>注册方式</th><th>试用资格</th><th>存活状态</th><th>存活时长</th><th>出口</th><th>耗时</th><th>任务</th></tr></thead><tbody id="resultsTableBody"></tbody></table></div><div id="resultsEmpty" class="empty-state hidden"><span>◇</span><h3>还没有账号结果</h3><p>任务逐账号完成后，结果会实时写入这里。</p></div></section>
+      </section>
+
+      <section class="view" id="view-settings" data-view="settings">
+        <div class="page-heading"><div><p class="kicker">SYSTEM / CONFIG</p><h1>运行配置</h1><p>配置只保存在独立项目的数据目录，敏感值读取时保持隐藏。</p></div><button class="primary" id="saveSettings">保存配置</button></div>
+        <div class="settings-layout">
+          <nav class="settings-nav"><button class="active" data-setting-panel="sms">01 · 接码平台</button><button data-setting-panel="proxy">02 · 托管代理</button><button data-setting-panel="gateway">03 · Sub2API</button><button data-setting-panel="browser">04 · 浏览器宿主</button><button data-setting-panel="runtime">05 · 运行时</button></nav>
+          <div class="surface settings-content">
+            <section class="setting-panel active" data-panel="sms"><div class="setting-title"><div><p>01 / SMS PROVIDER</p><h2>Free / OpenAI 独立号池</h2><span>用于 platform 模式的 add-phone 阶段。</span></div><button class="secondary compact" id="testSms">测试余额</button></div><div class="field-grid two-wide"><label><span>Provider</span><select data-setting="free_sms_provider"><option>smsbower</option><option>smshub</option><option>tiger-sms</option><option>smsverified</option><option>onlinesim</option><option>hero-sms</option></select></label><label><span>API Key</span><input type="password" data-setting="free_sms_api_key" placeholder="已配置时留空可保留"></label><label><span>Base URL</span><input data-setting="free_sms_base_url" placeholder="留空使用 Provider 默认地址"></label><label><span>Service</span><input data-setting="free_sms_service" value="dr"></label><label><span>Country ID</span><input data-setting="free_sms_country"></label><label><span>Max price</span><input data-setting="free_sms_max_price" placeholder="留空不限价"></label><label><span>Operator</span><input data-setting="free_sms_operator" placeholder="留空任意"></label><label><span>Use V2</span><select data-setting="free_sms_use_v2"><option value="1">true</option><option value="0">false</option></select></label></div><div id="smsTestResult" class="inline-result hidden"></div></section>
+            <section class="setting-panel" data-panel="proxy"><div class="setting-title"><div><p>02 / MANAGED PROXY</p><h2>托管代理池</h2><span>支持 711-compatible 用户名中的 region 与 session 参数。</span></div></div><div class="field-grid two-wide"><label><span>Host</span><input data-setting="proxy_host" placeholder="global.rotgb.example.com"></label><label><span>Port</span><input data-setting="proxy_port" type="number"></label><label><span>User</span><input data-setting="proxy_user" placeholder="USER-zone-custom-region-US"></label><label><span>Password</span><input type="password" data-setting="proxy_password" placeholder="已配置时留空可保留"></label></div></section>
+            <section class="setting-panel" data-panel="gateway"><div class="setting-title"><div><p>03 / DELIVERY</p><h2>Sub2API Agent 导入</h2><span>Agent Identity 模式结束后可自动生成并推送 Codex Session。</span></div></div><div class="field-grid two-wide"><label><span>Base URL</span><input data-setting="gateway_sub2api_url" placeholder="https://sub2api.example.com"></label><label><span>API Key</span><input type="password" data-setting="gateway_sub2api_token" placeholder="已配置时留空可保留"></label><label><span>Agent path</span><input data-setting="gateway_sub2api_agent_path"></label><label><span>Group IDs</span><input data-setting="gateway_sub2api_group_ids"></label></div></section>
+            <section class="setting-panel" data-panel="browser"><div class="setting-title"><div><p>04 / BROWSER HOST</p><h2>浏览器宿主连接</h2><span>Docker 部署优先使用 protocol；browser 需要宿主可访问对应进程。</span></div></div><div class="field-grid two-wide"><label><span>BitBrowser API</span><input data-setting="bitbrowser_api"></label><label><span>Roxy API Port</span><input data-setting="roxy_api_port"></label><label><span>Roxy API Token</span><input type="password" data-setting="roxy_api_token" placeholder="已配置时留空可保留"></label><label><span>Chromium path</span><input data-setting="chrome_path"></label></div></section>
+            <section class="setting-panel" data-panel="runtime"><div class="setting-title"><div><p>05 / RUNTIME</p><h2>核心运行时检查</h2><span>独立项目内置 Free 注册代码副本，不依赖原工作台进程。</span></div><button class="secondary compact" id="runtimeRefresh">重新检查</button></div><div class="field-grid two-wide runtime-timezone"><label><span>显示时区</span><select data-setting="display_timezone"><option value="Asia/Shanghai">Asia/Shanghai · UTC+8</option><option value="UTC">UTC · UTC+0</option><option value="America/Los_Angeles">America/Los_Angeles · UTC-7/8</option></select></label><p>任务与账号记录统一保存 UTC；页面、日志中的本地时间按此时区显示。</p></div><div id="runtimeDetails" class="runtime-grid"></div></section>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="drawer-backdrop hidden" id="drawerBackdrop"></div>
+  <aside class="job-drawer" id="jobDrawer" aria-hidden="true">
+    <header><div><p>LIVE EXECUTION</p><h2 id="drawerTitle">任务详情</h2><code id="drawerId">—</code></div><button id="closeDrawer">×</button></header>
+    <div class="drawer-progress"><div><span id="drawerState" class="status-pill">—</span><b id="drawerProgressText">0%</b></div><div class="progress-track"><i id="drawerProgressBar"></i></div><ul><li><span>成功</span><b id="drawerSuccess">0</b></li><li><span>失败</span><b id="drawerFailed">0</b></li><li><span>已处理</span><b id="drawerDone">0/0</b></li><li><span>耗时</span><b id="drawerDuration">0s</b></li></ul></div>
+    <div class="drawer-tabs"><button class="active" data-drawer-tab="log">实时日志</button><button data-drawer-tab="results">本批结果</button></div>
+    <div class="drawer-body"><pre id="drawerLog"></pre><div id="drawerResults" class="drawer-result-list hidden"></div></div>
+    <footer><div><a id="downloadLog" class="secondary" href="#">下载日志</a><a id="downloadResults" class="secondary" href="#">下载结果</a></div><button class="danger hidden" id="stopJob">停止任务</button></footer>
+  </aside>
+
+  <div class="modal-backdrop hidden" id="importModal">
+    <div class="modal-card"><header><div><p>ACCOUNT POOL</p><h2>导入服务端账号池</h2></div><button id="closeImport">×</button></header><p class="modal-intro">支持 Outlook 四段凭据与 iCloud Relay。相同邮箱会更新为本次内容。</p><textarea id="importLines" rows="10" placeholder="email----password----client_id----refresh_token"></textarea><div class="modal-actions"><label><span>导入策略</span><select id="importMode"><option value="append">追加 / 更新</option><option value="replace">清空后替换</option></select></label><button class="primary" id="importAccounts">确认导入</button></div></div>
+  </div>
+
+  <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

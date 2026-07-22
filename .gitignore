@@ -1,0 +1,17 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+data/*
+!data/.gitkeep
+output/*
+!output/.gitkeep
+core/output/*
+!core/output/.gitkeep
+core/output
+core/web_data/*
+!core/web_data/.gitkeep
+core/runtime/*
+!core/runtime/.gitkeep
+core/outlook_accounts.txt
+core/icloud_accounts.txt

@@ -1,0 +1,19 @@
+[Unit]
+Description=Free Register Console
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=freeops
+Group=freeops
+WorkingDirectory=/opt/free-register-console
+EnvironmentFile=-/opt/free-register-console/.env
+ExecStart=/opt/free-register-console/start.sh
+Restart=always
+RestartSec=3
+KillMode=mixed
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

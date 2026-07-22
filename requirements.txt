@@ -1,0 +1,8 @@
+Flask==3.0.3
+gunicorn==22.0.0
+httpx[socks]==0.28.1
+requests>=2.31.0
+curl-cffi>=0.13.0
+cryptography>=42.0.0
+DrissionPage>=4.1.0
+h2>=4.1.0
