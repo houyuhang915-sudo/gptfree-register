@@ -146,7 +146,7 @@ function renderHealth() {
   $("#healthScore").textContent = score;
   $("#scoreRing").style.setProperty("--score", `${score * 3.6}deg`);
   $("#healthTitle").textContent = health.ok ? "独立运行时已就绪" : "有检查项未通过";
-  $("#healthMessage").textContent = health.dry_run ? "当前使用演示运行器，用于界面和部署验收。" : "Free 注册核心、依赖和输出目录均由本服务管理。";
+  $("#healthMessage").textContent = health.dry_run ? "当前使用演示运行器，用于界面和本地流程验收。" : "注册核心、依赖和输出目录均由本地应用管理。";
   const labels = {runner: "Free runner", runtime: "Protocol core", writable: "Output writable", curl_cffi: "curl_cffi", httpx: "httpx", cryptography: "cryptography", api: "Console API"};
   $("#healthChecks").innerHTML = Object.entries(checks).map(([key, ok]) => `<div class="check-row"><span>${escapeHtml(labels[key] || key)}</span><b class="${ok ? "ok" : "fail"}">${ok ? "PASS" : "MISSING"}</b></div>`).join("");
   renderRuntime();

@@ -1,12 +1,12 @@
 # Gptfree协议注册工具
 
-`gptfree-register` 是一个面向 ChatGPT 协议注册任务的独立控制台。它将账号导入、批次注册、结果归档、Agent Identity、Sub2API 交付和账号状态轮询整合在一个可部署服务中，适合将注册任务、备用账号池和后续状态管理集中运行。
+`gptfree-register` 是一个面向 ChatGPT 协议注册任务的本地控制台。它将账号导入、批次注册、结果归档、Agent Identity、Sub2API 交付和账号状态轮询整合在一个本地运行项目中，适合将注册任务、备用账号池和后续状态管理集中运行。
 
 ## 项目介绍
 
-项目使用 `Mail Auth` 作为唯一协议内核，支持 Outlook 与 iCloud/Relay 邮箱输入；浏览器模式作为可选执行方式保留。服务独立保存配置、账号状态、任务日志和导出结果，不依赖原工作台的数据目录或运行进程。
+项目使用 `Mail Auth` 作为唯一协议内核，支持 Outlook 与 iCloud/Relay 邮箱输入；浏览器模式作为可选执行方式保留。本地数据目录独立保存配置、账号状态、任务日志和导出结果，不依赖原工作台的数据目录或运行进程。
 
-控制台将每个账号的流程拆成“备用池、注册批次、注册后凭据、状态追踪”四个可查看的阶段。任务从账号池领取指定数量的账号，服务端持续执行并记录结果；注册后可生成 Agent Identity、导出或自动导入 Sub2API；已注册账号则由后台轮询持续更新状态和确认存活时长。
+控制台将每个账号的流程拆成“备用池、注册批次、注册后凭据、状态追踪”四个可查看的阶段。任务从账号池领取指定数量的账号，本地任务进程持续执行并记录结果；注册后可选择 Agent Identity 免接码路径，跳过手机接码和绑定步骤；也可导出或自动导入 Sub2API。已注册账号则由后台轮询持续更新状态和确认存活时长。
 
 ## 核心能力
 
@@ -14,8 +14,8 @@
 - **分批注册**：从备用池按数量领取账号，服务原子预占，任务结束后自动写回已注册、失败或待重试状态。
 - **Mail Auth 协议注册**：唯一内置的协议实现，支持 Outlook 和 iCloud/Relay OTP 路径。
 - **浏览器注册**：可选 BitBrowser、RoxyBrowser 或本地 Chromium 执行方式。
-- **Agent Identity**：注册完成后可生成 Ed25519 Agent Identity，并保存为可导出的 `auth.json` 数据。
-- **Sub2API 自动导入**：任务可生成 Sub2API 导入文件，也可在填写 Sub2API 地址、API Key、接口路径和分组后，自动推送本批 Agent Identity。
+- **跳过接码**：选择 Agent Identity 模式后，注册完成直接生成 Ed25519 Agent Identity，跳过手机接码和绑定步骤，并保存为可导出的 `auth.json` 数据。
+- **Sub2API 自动导入**：填写 Sub2API 地址、API Key、接口路径和分组后，任务成功时会自动推送本批 Agent Identity；同时也支持只生成本地导入 JSON。
 - **自动状态轮询**：后台可按间隔刷新 Codex RT 并探测现有 Access Token，记录最近探测、最后确认状态与确认存活时长。
 - **长期账号管理**：账号状态、轮询记录、任务日志和导出结果都持久化到挂载目录，服务重启后继续保留。
 
@@ -40,7 +40,7 @@ Outlook / iCloud 凭据
 
 ### 快速开始
 
-要求：Python 3.11+、Node.js（Docker 镜像会自动安装）和可选的 Docker Compose。
+要求：Python 3.11+ 与 Node.js。
 
 ```bash
 git clone https://github.com/houyuhang915-sudo/gptfree-register.git
@@ -120,45 +120,9 @@ GATEWAY_SUB2API_GROUP_IDS=2
 
 轮询仅使用已保存的 Codex RT 或 Access Token，不会发起邮箱协议登录。`401/403` 等令牌异常会记录为待复核，避免错误覆盖已确认的账号状态。确认存活时长从最后一次成功确认开始累计，并在账号池列表中展示。
 
-### Docker 部署
+## 本地数据与备份
 
-```bash
-cp .env.example .env
-mkdir -p deploy-data/data deploy-data/output
-sudo chown -R 10001:10001 deploy-data
-docker compose up -d --build
-docker compose ps
-curl http://127.0.0.1:8866/api/health
-```
-
-默认仅绑定本机回环地址：
-
-```dotenv
-FREE_CONSOLE_PORT=8866
-FREE_CONSOLE_PUBLISH_PORT=18866
-FREE_CONSOLE_BIND_ADDRESS=127.0.0.1
-```
-
-如需公网访问，建议通过 `deploy/nginx.conf.example` 配置 HTTPS 反向代理，而不是直接暴露服务端口。
-
-### systemd 部署
-
-```bash
-sudo useradd --system --home /opt/gptfree-register --shell /usr/sbin/nologin freeops
-sudo install -d -o freeops -g freeops /opt/gptfree-register
-sudo rsync -a --chown=freeops:freeops ./ /opt/gptfree-register/
-cd /opt/gptfree-register
-sudo -u freeops -H python3 -m venv .venv
-sudo -u freeops -H .venv/bin/pip install -r requirements.txt
-sudo -u freeops -H cp .env.example .env
-sudo cp deploy/gptfree-register.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now gptfree-register
-```
-
-## 数据、备份与更新
-
-以下目录包含运行状态，应作为部署备份的一部分：
+以下目录包含本地运行状态，应作为本地备份的一部分：
 
 ```text
 data/settings.json          # 配置和密钥，权限 0600

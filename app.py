@@ -219,7 +219,7 @@ def health_check_proxy(settings: dict[str, Any] | None = None) -> str:
     """Build the configured proxy URL for non-browser health probes.
 
     The standalone health worker previously ignored the proxy configured in
-    the console and connected from the server IP directly.  Keep the secret
+    the console and connected from the local host IP directly. Keep the secret
     in the child environment rather than exposing it in a command or job log.
     """
     current = settings or load_settings()
@@ -1256,12 +1256,12 @@ def api_download(job_id: str, kind: str):
 
 
 if "pytest" not in sys.modules:
-    # The documented Gunicorn deployment uses one worker, so this process is
+    # The documented local Gunicorn runtime uses one worker, so this process is
     # the sole owner of scheduler state and the merged plan-check result file.
     start_status_poller()
 
 
 if __name__ == "__main__":
-    host = os.environ.get("FREE_CONSOLE_HOST", "0.0.0.0")
+    host = "127.0.0.1"
     port = int(os.environ.get("FREE_CONSOLE_PORT", "8866"))
     app.run(host=host, port=port, debug=False, threaded=True)

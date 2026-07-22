@@ -16,7 +16,6 @@ COPYFILE_DISABLE=1 tar -C "$PARENT" -czf "$ARCHIVE" \
   --exclude="$PROJECT/.playwright-cli" \
   --exclude="$PROJECT/data" \
   --exclude="$PROJECT/output" \
-  --exclude="$PROJECT/deploy-data" \
   --exclude="$PROJECT/__pycache__" \
   --exclude="$PROJECT/**/__pycache__" \
   --exclude="$PROJECT/**/*.pyc" \
@@ -29,7 +28,7 @@ COPYFILE_DISABLE=1 tar -C "$PARENT" -czf "$ARCHIVE" \
   --exclude="$PROJECT/.DS_Store" \
   "$PROJECT"
 
-if tar -tzf "$ARCHIVE" | grep -Eq "^${PROJECT}/(\\.env$|\\.git/|data/|output/|deploy-data/|\\.venv/|\\.pytest_cache/|\\.playwright-cli/|core/(outlook_accounts\\.txt|icloud_accounts\\.txt|output/|web_data/|runtime/|node_modules/)|.*__pycache__/|.*\\.pyc$)"; then
+if tar -tzf "$ARCHIVE" | grep -Eq "^${PROJECT}/(\\.env$|\\.git/|data/|output/|\\.venv/|\\.pytest_cache/|\\.playwright-cli/|core/(outlook_accounts\\.txt|icloud_accounts\\.txt|output/|web_data/|runtime/|node_modules/)|.*__pycache__/|.*\\.pyc$)"; then
   echo "Archive contains runtime data or credential paths: $ARCHIVE" >&2
   exit 1
 fi

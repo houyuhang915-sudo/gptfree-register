@@ -19,4 +19,4 @@ export TZ="${TZ:-${FREE_CONSOLE_TIMEZONE:-Asia/Shanghai}}"
 export FREE_CONSOLE_TIMEZONE="${FREE_CONSOLE_TIMEZONE:-$TZ}"
 
 exec gunicorn --workers 1 --threads "${FREE_CONSOLE_THREADS:-8}" --timeout 120 \
-  --bind "${FREE_CONSOLE_HOST:-0.0.0.0}:${FREE_CONSOLE_PORT:-8866}" app:app
+  --bind "127.0.0.1:${FREE_CONSOLE_PORT:-8866}" app:app
